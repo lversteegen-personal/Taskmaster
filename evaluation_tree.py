@@ -78,7 +78,7 @@ class evaluation_tree_node:
 
         if self.children[self.direct_to] == None:
             if not proof_node.completed:
-                self.children[self.direct_to] == evaluation_tree_node(proof_node)
+                self.children[self.direct_to] = evaluation_tree_node(proof_node)
             self.n[self.direct_to] = 1
             self.q[self.direct_to] = v
         else:

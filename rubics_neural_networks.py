@@ -48,7 +48,7 @@ class student_network:
         opt = Adam(learning_rate=0.01)
         losses={'eval_output':'kl_divergence','policy_output':'kl_divergence'}
 
-        model.compile(optimizer=opt, loss=losses)
+        model.compile(optimizer=opt, loss=losses,loss_weights=[3,1])
 
         self.neural_network = model
 
