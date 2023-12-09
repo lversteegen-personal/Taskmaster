@@ -31,7 +31,7 @@ class classroom:
 
         self.replay_record = []
 
-    def run_training_batch(self, n_problems):
+    def run_training_batch(self, n_problems, epochs_per_episode):
 
         problems = self.teacher.generate_problems(n_problems)
         replay_record, proof_nodes = self.test_students(problems)
@@ -52,7 +52,7 @@ class classroom:
         evals = np.array(evals)
         policies = np.array(policies)
 
-        self.student.neural_network.fit(inputs,evals,policies)
+        self.student.neural_network.fit(inputs,evals,policies,epochs_per_episode)
 
     def test_students(self, start_states):
 

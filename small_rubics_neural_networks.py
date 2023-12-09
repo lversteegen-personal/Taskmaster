@@ -5,17 +5,33 @@ from keras import regularizers
 from keras.models import Model
 from keras.optimizers import Adam
 import tensorflow as tf
+import keras
 
 from task_tree import task_tree_node
 import small_rubics as rubics
 
 class student_network:
 
-    def __init__(self, residual_layers):
+    def __init__(self):
 
         self.input_size = 24*6
-        self.epochs=1
-        self.build_network(residual_layers)
+
+    def create(residual_layers):
+
+        network = student_network()
+        network.build_network(residual_layers)
+        return network
+
+    def save(self, path):
+
+        self.neural_network.save(path)
+        print(f"Network saved under {path}.")
+
+    def load(path):
+
+        network = student_network()
+        network.neural_network = keras.models.load_model(path)
+        return network
 
     def build_network(self, residual_layers):
 
@@ -81,6 +97,7 @@ class student_network:
 
         return nn_input, eval, policy
 
-    def fit(self, inputs, evals, policies):
+    def fit(self, inputs, evals, policies, epochs=1):
 
-        self.neural_network.fit(x=inputs,y=[evals, policies],batch_size=16, epochs=self.epochs)
+        self.neural_network.fit(x=inputs,y=[evals, policies],batch_size=16, epochs=epochs,shuffle =True)
+
