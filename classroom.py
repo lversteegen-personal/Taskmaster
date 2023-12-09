@@ -7,13 +7,14 @@ from task import task, setup
 
 class replay_datum:
 
-    def __init__(self, task_node, next_task_node, action_code, eval_root, task_index):
+    def __init__(self, task_node:task_tree_node, next_task_node:task_tree_node, action_code:int, pi:np.ndarray, eval_root:evaluation_tree_node, task_index:int):
 
         self.task_node : task_tree_node = task_node
         self.next_task_node : task_tree_node = next_task_node
         self.action_code = action_code
         self.eval_tree_root : evaluation_tree_node = eval_root
         self.task_index = task_index
+        self.pi = pi
 
 class classroom:
 
@@ -42,11 +43,10 @@ class classroom:
 
         for rd in replay_record:
             inputs.append(rd.task_node.input)
-            policies.append(rd.eval_tree_root.pi)
-            if proof_nodes[rd.task_index].completed:
-                evals.append(1.0)
-            else:
-                evals.append(0.0)
+            policies.append(rd.pi)
+            end_node:task_tree_node = proof_nodes[rd.task_index]
+
+            evals.append(self.task.reward_function(end_node.state,end_node.depth))
 
         inputs = np.array(inputs)
         evals = np.array(evals)
@@ -64,25 +64,25 @@ class classroom:
 
             proof_roots.append(task_tree_node(self.task, s,0))
         
-        for i in range(self.n_students):
+        for _ in range(self.n_students):
 
             proof_nodes.extend(proof_roots)
 
-        for i in range(self.max_steps):
+        for _ in range(self.max_steps):
 
             unfinished_task_indices = [i for i,p in enumerate(proof_nodes) if not p.completed]
             result = self.student.run_action_step([proof_nodes[i] for i in unfinished_task_indices])
 
-            for j, (action, eval_root) in enumerate(result):
+            for j, (action, pi, eval_root) in enumerate(result):
 
                 k = unfinished_task_indices[j]
                 old_node : task_tree_node = proof_nodes[k]
                 new_node : task_tree_node = old_node.children[action]
                 proof_nodes[k] = new_node
 
-                datum = replay_datum(old_node,new_node,action,eval_root, k)
+                datum = replay_datum(old_node,new_node,action, pi, eval_root, k)
                 replay_record.append(datum)
 
-            print(f"Finished step {i}, {len(unfinished_task_indices)} out of {len(proof_nodes)} remain open.")
+            print(f"Finished step {_}, {len(unfinished_task_indices)} out of {len(proof_nodes)} remain open.")
 
         return replay_record, proof_nodes

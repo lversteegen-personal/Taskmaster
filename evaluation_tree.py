@@ -1,11 +1,9 @@
 from task_tree import task_tree_node
 import numpy as np
 import math
-
+from scipy.stats import norm as normal_dist
 
 class evaluation_tree_node:
-
-    c = 1.0
 
     def __init__(self, task_node: task_tree_node):
 
@@ -18,7 +16,25 @@ class evaluation_tree_node:
         self.rng = np.random.default_rng(seed=0)
         self.completed = False
 
-    def compute_current_policy(self):
+        self.pow = 1
+        self.exploration_constant = 1
+
+        self.network_trust = 1
+
+    def compute_policy_statistics(self):
+
+        pi = self.task_node.initial_policy
+        q_v = (0.01+pi)*(1.01-pi) / (0.001+self.n)
+        #The choice for pi_v is pretty arbitrary...
+        pi_v =  (0.01+pi)*(1.01-pi) / self.network_trust
+        t = pi_v/(q_v+pi_v)
+        t[self.n==0] = 0
+        p_E = t*self.q+(1-t)*pi
+        p_V = t**2*q_v+(1-t)**2*pi_v
+
+        return p_E, p_V
+
+    def compute_current_policy_advanced(self):
 
         if not self.task_node.expanded:
             raise RuntimeError("Underlying state is not expanded")
@@ -42,7 +58,10 @@ class evaluation_tree_node:
 
     def find_leaf(self):
 
-        a = self.select_action()
+        if self.task_node.completed:
+            return self.task_node
+
+        a = self.select_exploration()
         self.direct_to = a
 
         if self.children[a] != None:
@@ -52,39 +71,55 @@ class evaluation_tree_node:
 
     def select_action(self):
 
-        if self.completed:
-            return self.direct_to
-        
-        self.pi = self.compute_current_policy()
-        self.pi[self.task_node.invalid_actions] = 0
+        p_E,p_V = self.compute_policy_statistics()
+        p_E[self.task_node.invalid_actions] = 0
 
         while True:
 
-            self.pi /= self.pi.sum()
-            a = self.rng.choice(self.n_actions, p=self.pi)
+            x = self.rng.normal(p_E, np.sqrt(p_V))
+            x[self.task_node.invalid_actions] = -100
+            a = np.argmax(x)
 
             if self.task_node.try_action(a):
-                return a
+                return a, p_E
             else:
-                self.pi[a] = 0
+                p_E[a] = 0
 
-    def update(self, proof_node: task_tree_node):
+    def select_exploration(self):
 
-        if proof_node.completed:
-            v = 1
-            self.completed = True
+        return self.select_action()[0]
+        
+        # pi = self.compute_policy_statistics()
+        # pi[self.task_node.invalid_actions] = 0
+
+        # while True:
+
+        #     pi /= pi.sum()
+        #     a = self.rng.choice(self.n_actions, p=pi)
+
+        #     if self.task_node.try_action(a):
+        #         return a
+        #     else:
+        #         pi[a] = 0
+
+    def update(self, task_node: task_tree_node):
+
+        if self.task_node.completed:
+            if not task_node.completed:
+                raise("Something went wrong here.")
+            else:
+                return
+
+        if task_node.completed:
+            v = task_node.task.reward_function(task_node.state,task_node.depth)
         else:
-            v = proof_node.initial_evaluation
+            v = task_node.initial_evaluation
 
-        if self.children[self.direct_to] == None:
-            if not proof_node.completed:
-                self.children[self.direct_to] = evaluation_tree_node(proof_node)
-            self.n[self.direct_to] = 1
-            self.q[self.direct_to] = v
+        if self.n[self.direct_to] == 0:
+            self.children[self.direct_to] = evaluation_tree_node(task_node)
         else:
-            self.children[self.direct_to].update(proof_node)
-            self.q[self.direct_to] = (
-                self.q[self.direct_to] * self.n[self.direct_to] + v)/(self.n[self.direct_to]+1)
-            self.n[self.direct_to] += 1
+            self.children[self.direct_to].update(task_node)
 
+        self.q[self.direct_to] = (self.q[self.direct_to] * self.n[self.direct_to] + v)/(self.n[self.direct_to]+1)
+        self.n[self.direct_to] += 1
         self.total_visits += 1

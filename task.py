@@ -1,10 +1,11 @@
 class task:
 
-    def __init__(self, n_actions, action, check_completed):
+    def __init__(self, n_actions, action, check_completed, reward_function):
 
         self.n_actions = n_actions
         self.action = action
         self.check_completed = check_completed
+        self.reward_function = reward_function
 
 class setup:
 

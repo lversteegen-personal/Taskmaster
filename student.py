@@ -38,7 +38,8 @@ class student:
 
         for i, t in enumerate(eval_trees):
 
-            t.update(eval_leaves[i])
+            if not t.completed:
+                t.update(eval_leaves[i])
 
     def run_action_step(self, task_nodes):
 
@@ -64,11 +65,11 @@ class student:
 
         for i,t in enumerate(task_nodes):
             
-            a = initial_eval_trees[i].select_action()
+            a, pi = initial_eval_trees[i].select_action()
             if not t.try_action(a):
                 raise ValueError("This action is not valid.")
             else:
-                result_list.append((a,initial_eval_trees[i]))
+                result_list.append((a,pi, initial_eval_trees[i]))
 
         return result_list
     

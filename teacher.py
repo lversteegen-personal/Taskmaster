@@ -11,7 +11,7 @@ class teacher:
     def generate_problems(self, n):
 
         n_actions = self.setup.n_actions
-        steps = self.rng.poisson(3,size=n)
+        steps = np.ones(n,dtype=int)#self.rng.poisson(3,size=n)
         states = []
 
         for i in range(n):

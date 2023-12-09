@@ -41,7 +41,7 @@ def turn_cube(old, axis, layer):
 
 i=0
 visilist = []
-for x,y,z in itertools.product([-1,0,1],[-1,0,1],[-1,0,1]):
+for x,y,z in itertools.product([-1,1],[-1,1],[-1,1]):
     if x==-1:
         visilist.append((x,y,z,0,i))
         i+=1
@@ -67,11 +67,12 @@ for (x,y,z,f,i) in visilist:
 
 turns = []
 
-for a,l in itertools.product([0,1,2],[-1,0,1]):
+for a,l in itertools.product([0,1,2],[-1,1]):
     turns.append(turn_cube(identity,a,l))
 
 np_turns = []
 for t in turns:
+    #Add reverse turns?
     nt = np.zeros(len(visilist),dtype=int)
     for (x,y,z,f,i) in visilist:
         if t[x,y,z,f] == -1:
@@ -81,43 +82,45 @@ for t in turns:
     np_turns.append(nt)
     np_turns.append(nt[nt[nt]])
 
-np_turns.append(np.arange(54))
+np_turns.append(np.arange(24))
 np_turns = np.array(np_turns)
 
 #Perform a manual rotation of a specified layer around a specified axis 
 def manual_turn(cube,axis,layer,reverse=False):
     if reverse:
-        return cube[np_turns[6*axis+2*(layer+1)+1]]
+        return cube[np_turns[4*axis+(layer+1)+1]]
     else:
-        return cube[np_turns[6*axis+2*(layer+1)]]
+        return cube[np_turns[4*axis+(layer+1)]]
 
 start_coloring = -np.ones(len(visilist),dtype=int)
 for (_,__,___,f,i) in visilist:
     start_coloring[i] = f
 
-if np.max(staticmethod == -1) > 0:
+if np.max(start_coloring == -1) > 0:
     raise Exception()
 
-faces = -np.ones((6,3,3),dtype=int)
+faces = -np.ones((6,2,2),dtype=int)
 
-for i,j in itertools.product([-1,0,1],[-1,0,1]):
+for i,j in itertools.product([-1,1],[-1,1]):
 
-    #We think about looking at the cube from the front first, turning around the y-axis to get to right, left and back,
-    #and turning around the x-axis to get to top and bottom.
-    faces[4,i+1,j+1] = identity[i,j,-1,4]
-    faces[0,i+1,j+1] = identity[-1,j,-i,0]
-    faces[5,i+1,j+1] = identity[-i,j,1,5]
-    faces[1,i+1,j+1] = identity[1,j,i,1]
-    faces[2,i+1,j+1] = identity[i,-1,-j,2]
-    faces[3,i+1,j+1] = identity[i,1,j,3]
+    #We think about looking at the cube from the front first, rotating around the y-axis to get to right, left and back faces,
+    #and rotating around the x-axis to get to the top and bottom faces.
+    k = (i+1)//2
+    l = (j+1)//2
+    faces[4,k,l] = identity[i,j,-1,4]
+    faces[0,k,l] = identity[-1,j,-i,0]
+    faces[5,k,l] = identity[-i,j,1,5]
+    faces[1,k,l] = identity[1,j,i,1]
+    faces[2,k,l] = identity[i,-1,-j,2]
+    faces[3,k,l] = identity[i,1,j,3]
 
 if np.max(faces == -1) > 0:
     raise Exception()
 
 def get_colors(cube_state):
 
-    colors = -np.ones((6,3,3),dtype=int)
-    for f,i,j in itertools.product(range(6),range(3),range(3)):
+    colors = -np.ones((6,2,2),dtype=int)
+    for f,i,j in itertools.product(range(6),range(2),range(2)):
         colors[f,i,j] = start_coloring[cube_state[faces[f,i,j]]]
 
     if np.max(colors == -1) > 0:
@@ -126,47 +129,47 @@ def get_colors(cube_state):
     return colors
 
 mesh_positions = []
-for i,j in itertools.product(range(3),range(3)):
+for i,j in itertools.product(range(2),range(2)):
     #each tuple has the form: (x,y, f,i,j) where x and y are the coordinates where the color should be drawn,
     #and f,i,j say from which small face the color should be taken
-    mesh_positions.append((i,3+j, 0,i,j))
-    mesh_positions.append((6+i,3+j, 1,i,j))
-    mesh_positions.append((3+i,j, 2,i,j))
-    mesh_positions.append((3+i,6+j, 3,i,j))
-    mesh_positions.append((3+i,3+j, 4,i,j))
-    mesh_positions.append((9+i,3+j, 5,i,j))
+    mesh_positions.append((i,2+j, 0,i,j))
+    mesh_positions.append((4+i,2+j, 1,i,j))
+    mesh_positions.append((2+i,j, 2,i,j))
+    mesh_positions.append((2+i,4+j, 3,i,j))
+    mesh_positions.append((2+i,2+j, 4,i,j))
+    mesh_positions.append((6+i,2+j, 5,i,j))
 
 #Outputs the mesh of a cube on the console
 def print_coloring(cube_state):
 
     colors = get_colors(cube_state)
 
-    grid = np.zeros((12,9),dtype=int)
+    grid = np.zeros((8,6),dtype=int)
     for x,y,f,i,j in mesh_positions:
         grid[x,y] = colors[f,i,j]+1
 
     letters = [" ","R","O","G","B","W","Y"]
     text=""
-    for y in range(9):
-        for x in range(12):
-            text += letters[grid[x,8-y]]
+    for y in range(6):
+        for x in range(8):
+            text += letters[grid[x,5-y]]
         text += "\n"
 
     print(text)
 
 winning_states = []
 
-cube_state = np.array(range(54),dtype=int)
+cube_state = np.array(range(24),dtype=int)
 for _ in range(4):
     winning_states.append(cube_state)
-    for i in [-1,0,1]:
+    for i in [-1,1]:
         cube_state = manual_turn(cube_state,axis=1,layer=i)
 tmp = cube_state
-for i in [-1,0,1]:
+for i in [-1,1]:
         cube_state = manual_turn(cube_state,axis=0,layer=i,reverse=True)
 winning_states.append(cube_state)
 cube_state = tmp
-for i in [-1,0,1]:
+for i in [-1,1]:
         cube_state = manual_turn(cube_state,axis=0,layer=i)
 winning_states.append(cube_state)
 
@@ -209,15 +212,18 @@ def task_action(state, action_code):
 def make_neural_input(state):
 
     colors = start_coloring[state]
-    input = np.zeros((54,6),dtype=float)
-    input[np.arange(54,dtype=int),colors] = 1.0
+    input = np.zeros((24,6),dtype=float)
+    input[np.arange(24,dtype=int),colors] = 1.0
     return input.flatten()
 
 gamma = .5
 
 def reward_function(state, steps):
 
-    return 1 - gamma+ gamma/steps
+    if check_win(state):
+        return 1 - gamma+ gamma/steps
+    else:
+        return 0
 
-rubics_task = task(18,task_action,check_win, reward_function)
-rubics_setup = setup(np.arange(54),18,task_action)
+rubics_task = task(12,task_action,check_win, reward_function)
+rubics_setup = setup(np.arange(24),12,task_action)
