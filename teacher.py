@@ -3,15 +3,16 @@ import numpy as np
 
 class teacher:
 
-    def __init__(self, setup:setup):
+    def __init__(self, setup:setup, lamda):
 
         self.setup = setup
         self.rng = np.random.default_rng(seed=0)
+        self.lamda = lamda
 
     def generate_problems(self, n):
 
         n_actions = self.setup.n_actions
-        steps = np.ones(n,dtype=int)#self.rng.poisson(3,size=n)
+        steps = 1+self.rng.poisson(self.lamda,size=n)
         states = []
 
         for i in range(n):

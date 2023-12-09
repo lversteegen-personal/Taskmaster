@@ -11,13 +11,13 @@ import small_rubics as rubics
 
 class student_network:
 
-    def __init__(self):
+    def __init__(self, residual_layers):
 
         self.input_size = 24*6
         self.epochs=1
-        self.build_network()
+        self.build_network(residual_layers)
 
-    def build_network(self):
+    def build_network(self, residual_layers):
 
         self.neural_network = None
 
@@ -25,7 +25,7 @@ class student_network:
         self.residual_bias_reg = regularizers.l2(0.001)
         self.relu_leak = 0.1
         self.residual_units = 100
-        self.residual_layers = 0
+        self.residual_layers = residual_layers
 
         input = kl.Input(shape=self.input_size)
         
