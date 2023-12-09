@@ -37,7 +37,7 @@ class student_network:
 
         self.neural_network = None
 
-        self.residual_weights_reg = regularizers.l2(l2=0.0001)
+        self.residual_weights_reg = regularizers.l2(l2=0.001)
         self.residual_bias_reg = regularizers.l2(0.001)
         self.relu_leak = 0.1
         self.residual_units = 100
@@ -63,7 +63,7 @@ class student_network:
 
         model = Model(inputs= input,outputs = [eval,policy])
 
-        opt = Adam(learning_rate=0.01)
+        opt = Adam(learning_rate=0.002)
         losses={'eval_output':'mean_squared_error','policy_output':'mean_squared_error'}
 
         model.compile(optimizer=opt, loss=losses,loss_weights=[3,1])
