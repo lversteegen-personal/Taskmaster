@@ -8,7 +8,7 @@ import tensorflow as tf
 import keras
 
 from task_tree import task_tree_node
-import small_rubics as rubics
+import small_rubiks as rubiks
 
 class student_network:
 
@@ -90,7 +90,7 @@ class student_network:
         t : task_tree_node
         for i, t in enumerate(task_nodes):
             
-            nn_input[i] = rubics.make_neural_input(t.state)
+            nn_input[i] = rubiks.make_neural_input(t.state)
 
         eval, policy = self.neural_network(nn_input)
         eval, policy = (eval.numpy(),policy.numpy())

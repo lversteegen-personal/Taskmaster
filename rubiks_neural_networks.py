@@ -7,7 +7,7 @@ from keras.optimizers import Adam
 import tensorflow as tf
 
 from task_tree import task_tree_node
-import rubics
+import rubiks
 
 class student_network:
 
@@ -72,7 +72,7 @@ class student_network:
         t : task_tree_node
         for i, t in enumerate(task_nodes):
             
-            nn_input[i] = rubics.make_neural_input(t.state)
+            nn_input[i] = rubiks.make_neural_input(t.state)
 
         eval, policy = self.neural_network(nn_input)
         eval, policy = (eval.numpy(),policy.numpy())

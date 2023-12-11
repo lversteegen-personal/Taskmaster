@@ -137,9 +137,12 @@ for i,j in itertools.product(range(3),range(3)):
     mesh_positions.append((9+i,3+j, 5,i,j))
 
 #Outputs the mesh of a cube on the console
-def print_coloring(cube_state):
+def print_coloring(cube_state, color_array=False):
 
-    colors = get_colors(cube_state)
+    if color_array:
+        colors = get_colors(cube_state)
+    else:
+        colors = get_colors(start_coloring[cube_state])
 
     grid = np.zeros((12,9),dtype=int)
     for x,y,f,i,j in mesh_positions:
@@ -156,25 +159,40 @@ def print_coloring(cube_state):
 
 winning_states = []
 
-cube_state = np.array(range(54),dtype=int)
-for _ in range(4):
-    winning_states.append(cube_state)
+s1 = np.array(range(24),dtype=int)
+
+def turn_all_layers(state, axis, reverse = False):
+
     for i in [-1,0,1]:
-        cube_state = manual_turn(cube_state,axis=1,layer=i)
-tmp = cube_state
-for i in [-1,0,1]:
-        cube_state = manual_turn(cube_state,axis=0,layer=i,reverse=True)
-winning_states.append(cube_state)
-cube_state = tmp
-for i in [-1,0,1]:
-        cube_state = manual_turn(cube_state,axis=0,layer=i)
-winning_states.append(cube_state)
+        state = manual_turn(state,axis=axis, layer=i, reverse=reverse)
+
+    return state
+
+for _ in range(4):
+    s1 = turn_all_layers(s1,axis=1)
+    s2=s1
+    
+    for __ in range(4):
+        s2 = turn_all_layers(s2,axis=0)
+        winning_states.append(start_coloring[s2])
+
+    s2=turn_all_layers(s1,axis=2)
+    winning_states.append(start_coloring[s2])
+    s2=turn_all_layers(s1,axis=2,reverse=True)
+    winning_states.append(start_coloring[s2])
+
+compare = np.zeros((24,24),dtype=bool)
+for i,j in itertools.product(range(24),range(24)):
+    if i!= j:
+        compare[i,j] = (winning_states[i] == winning_states[j]).all()
 
 #Call this function on a set of cubes to see which of them are finished
 def check_win(state):
 
+    colors = start_coloring[state]
+
     for w in winning_states:
-        if (state==w).all():
+        if (colors==w).all():
             return True
 
     return False
@@ -219,5 +237,5 @@ def reward_function(state, steps):
 
     return 1 - gamma+ gamma/steps
 
-rubics_task = task(18,task_action,check_win, reward_function)
-rubics_setup = setup(np.arange(54),18,task_action)
+rubiks_task = task(18,task_action,check_win, reward_function)
+rubiks_setup = setup(np.arange(54),18,task_action)

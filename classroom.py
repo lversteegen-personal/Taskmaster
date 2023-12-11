@@ -57,32 +57,32 @@ class classroom:
     def test_students(self, start_states):
 
         replay_record = []
-        proof_roots = []
-        proof_nodes = []
+        task_roots = []
+        task_nodes = []
 
         for s in start_states:
 
-            proof_roots.append(task_tree_node(self.task, s,0))
+            task_roots.append(task_tree_node(self.task, s,0))
         
         for _ in range(self.n_students):
 
-            proof_nodes.extend(proof_roots)
+            task_nodes.extend(task_roots)
 
         for _ in range(self.max_steps):
 
-            unfinished_task_indices = [i for i,p in enumerate(proof_nodes) if not p.completed]
-            result = self.student.run_action_step([proof_nodes[i] for i in unfinished_task_indices])
+            unfinished_task_indices = [i for i,p in enumerate(task_nodes) if not p.completed]
+            result = self.student.run_action_step([task_nodes[i] for i in unfinished_task_indices])
 
             for j, (action, pi, eval_root) in enumerate(result):
 
                 k = unfinished_task_indices[j]
-                old_node : task_tree_node = proof_nodes[k]
+                old_node : task_tree_node = task_nodes[k]
                 new_node : task_tree_node = old_node.children[action]
-                proof_nodes[k] = new_node
+                task_nodes[k] = new_node
 
                 datum = replay_datum(old_node,new_node,action, pi, eval_root, k)
                 replay_record.append(datum)
 
-            print(f"Finished step {_}, {len(unfinished_task_indices)} out of {len(proof_nodes)} remain open.")
+            print(f"Finished step {_}, {len(unfinished_task_indices)} out of {len(task_nodes)} remain open.")
 
-        return replay_record, proof_nodes
+        return replay_record, task_nodes
