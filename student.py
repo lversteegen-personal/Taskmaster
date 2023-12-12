@@ -14,17 +14,17 @@ class student:
 
         self.neural_network = neural_network
 
-    def expand_proof_nodes(self, task_nodes:list):
+    def expand_task_nodes(self, task_nodes:list):
 
         #Make elements unique
         s = set(task_nodes)
         task_nodes = [t for t in s if not (t.completed or t.expanded)]
 
-        nn_input, eval,policy = self.neural_network.predict(task_nodes)
+        eval,policy = self.neural_network.predict_value(task_nodes)
 
         for i, t in enumerate(task_nodes):
 
-            t.expand(nn_input[i],eval[i],policy[i])
+            t.expand(eval[i],policy[i])
 
     def run_simulation_step(self, eval_trees):
 
@@ -34,7 +34,7 @@ class student:
 
             eval_leaves.append(t.find_leaf())
         
-        self.expand_proof_nodes(eval_leaves)
+        self.expand_task_nodes(eval_leaves)
 
         for i, t in enumerate(eval_trees):
 
@@ -51,7 +51,7 @@ class student:
             elif not t.expanded:
                 to_expand.append(t)
 
-        self.expand_proof_nodes(to_expand)
+        self.expand_task_nodes(to_expand)
 
         initial_eval_trees = [evaluation_tree_node(t) for t in task_nodes]
         eval_trees = set(initial_eval_trees)

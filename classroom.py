@@ -44,7 +44,7 @@ class classroom:
         rd:replay_datum
 
         for rd in replay_record:
-            inputs.append(rd.task_node.input)
+            inputs.append(rd.task_node.state)
             policies.append(rd.pi)
             end_node:task_tree_node = proof_nodes[rd.task_index]
 
@@ -54,7 +54,7 @@ class classroom:
         evals = np.array(evals)
         policies = np.array(policies)
 
-        self.student.neural_network.fit(inputs,evals,policies,epochs_per_episode)
+        self.student.neural_network.fit_value(inputs,evals,policies,epochs_per_episode)
 
     def test_students(self, start_states):
 

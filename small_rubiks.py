@@ -206,7 +206,11 @@ def check_win(state):
 
 def task_action(state, action_code):
     
-    return True, state[np_turns[action_code]]
+    if state.ndim == 2:
+        n = state.shape[0]
+        return np.ones(n,dtype=bool), np.take_along_axis(state,np_turns[action_code,:],axis=1)
+    else:
+        return True, state[np_turns[action_code]]
 
 # def task_action(states, action_codes):
 
@@ -219,11 +223,17 @@ def task_action(state, action_code):
 
 def make_neural_input(state):
 
-    colors = start_coloring[state]
-    input = np.zeros((24,6),dtype=float)
-    input[np.arange(24,dtype=int),colors] = 1.0
-    return input.flatten()
+    if state.ndim == 2:
+        n = state.shape[0]
+        colors = np.take_along_axis(start_coloring[None,:],state,axis=1)
+        return (np.arange(6) == colors[...,None]).astype(float).reshape((n,-1))
+    else:
+        colors = start_coloring[state]
+        input = np.zeros((24,6),dtype=float)
+        input[np.arange(24,dtype=int),colors] = 1.0
+        return input.flatten()
 
+#gamma should be zero unless we feed the state depth into the neural network
 gamma = 0
 
 def reward_function(state, steps):
