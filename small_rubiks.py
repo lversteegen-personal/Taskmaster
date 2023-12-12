@@ -224,7 +224,7 @@ def make_neural_input(state):
     input[np.arange(24,dtype=int),colors] = 1.0
     return input.flatten()
 
-gamma = .5
+gamma = 0
 
 def reward_function(state, steps):
 

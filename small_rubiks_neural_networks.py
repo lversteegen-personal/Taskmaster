@@ -99,5 +99,5 @@ class student_network:
 
     def fit(self, inputs, evals, policies, epochs=1):
 
-        self.neural_network.fit(x=inputs,y=[evals, policies],batch_size=16, epochs=epochs,shuffle =True)
+        self.neural_network.fit(x=inputs,y=[evals, policies],batch_size=16, epochs=epochs,shuffle =False)
 

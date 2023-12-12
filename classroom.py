@@ -36,6 +36,8 @@ class classroom:
         problems = self.teacher.generate_problems(n_problems)
         replay_record, proof_nodes = self.test_students(problems)
 
+        replay_record
+
         inputs = []
         policies = []
         evals = []
