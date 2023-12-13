@@ -52,7 +52,7 @@ class student_network:
         eval = kl.Dense(1,kernel_regularizer=params.residual_weights_reg)(x)
         eval = kl.Activation('sigmoid',name='eval_output')(eval)
 
-        policy = kl.Dense(12,kernel_regularizer=regularizers.l2(0.01),bias_regularizer=regularizers.l2(0.01))(x)
+        policy = kl.Dense(12)(x)
         policy = kl.Activation('sigmoid',name='policy_output')(policy)
 
         model = Model(inputs= input,outputs = [eval,policy])
