@@ -35,23 +35,17 @@ class student_network:
         network.value_network = keras.models.load_model(path)
         return network
 
-    def build_value_network(self, residual_layers):
-
-        params = dotdict({
-            "residual_weights_reg" : regularizers.l2(l2=0.001),
-            "residual_bias_reg" : regularizers.l2(0.001),
-            "relu_leak" : 0.1,
-            "residual_units" : 100
-        })
+    def build_value_network(self, params):
 
         input = kl.Input(shape=self.state_size)
         
-        x = kl.BatchNormalization()(input)
+        x = input
+        #x = kl.BatchNormalization()(x)
         x = kl.Dense(params.residual_units,kernel_regularizer=params.residual_weights_reg,bias_regularizer=params.residual_bias_reg)(x)
         x = kl.LeakyReLU(alpha=params.relu_leak)(x)
-        x = kl.BatchNormalization()(x)
+        #x = kl.BatchNormalization()(x)
 
-        for i in range(residual_layers):
+        for i in range(params.residual_layers):
 
             x = self.make_residual_layer(x, params)
 
@@ -63,7 +57,7 @@ class student_network:
 
         model = Model(inputs= input,outputs = [eval,policy])
 
-        opt = Adam(learning_rate=0.002)
+        opt = Adam(params.learning_rate)
         losses={'eval_output':'mean_squared_error','policy_output':'mean_squared_error'}
 
         model.compile(optimizer=opt, loss=losses,loss_weights=[3,1])
