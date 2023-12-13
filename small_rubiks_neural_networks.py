@@ -116,15 +116,7 @@ class student_network:
         next_states = rubiks.make_neural_input(next_states)
         self.state_network.fit(x=[states,actions],y=next_states,batch_size=32, epochs=epochs,shuffle =True,validation_split=1/16)
 
-    def build_state_network(self, residual_layers):
-
-        params = dotdict({
-            "residual_weights_reg" : regularizers.l2(l2=0.001),
-            "residual_bias_reg" : regularizers.l2(0.001),
-            "relu_leak" : 0.1,
-            "residual_units" : 300,
-            "learning_rate" : 0.001
-        })
+    def build_state_network(self, params):
 
         state_input = kl.Input(self.state_size, name="state")
         action_input = kl.Input(12,name="action")
@@ -137,7 +129,7 @@ class student_network:
         x = kl.LeakyReLU(alpha=params.relu_leak)(x)
         #x = kl.BatchNormalization()(x)
 
-        for i in range(residual_layers):
+        for i in range(params.residual_layers):
 
             x = self.make_residual_layer(x, params)
 
