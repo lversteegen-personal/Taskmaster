@@ -4,6 +4,7 @@ from evaluation_tree import evaluation_tree_node
 from student import student
 from teacher import teacher
 from task import task, setup
+from typing import Callable
 
 class replay_datum:
 
@@ -18,7 +19,7 @@ class replay_datum:
 
 class classroom:
 
-    def __init__(self, task:task, setup:setup, teacher:teacher, student_template:student, n_students:int, max_steps:int):
+    def __init__(self, task:task, setup:setup, teacher:teacher, student_template:student, n_students:int, max_steps:int, buffer_size:Callable):
 
         self.task = task
         self.setup = setup
@@ -29,18 +30,22 @@ class classroom:
         self.n_students = n_students
         self.max_steps = max_steps
 
-        self.replay_record = []
+        self.input_buffer = None
+        self.policy_buffer = None
+        self.value_buffer = None
+
+        self.buffer_size = buffer_size
+        self.total_tasks = 0
 
     def run_training_batch(self, n_problems, epochs_per_episode):
 
         problems = self.teacher.generate_problems(n_problems)
         replay_record, proof_nodes = self.test_students(problems)
 
-        replay_record
-
+        self.total_tasks += n_problems
         inputs = []
         policies = []
-        evals = []
+        values = []
         rd:replay_datum
 
         for rd in replay_record:
@@ -48,13 +53,25 @@ class classroom:
             policies.append(rd.pi)
             end_node:task_tree_node = proof_nodes[rd.task_index]
 
-            evals.append(self.task.reward_function(end_node.state,end_node.depth))
+            values.append(self.task.reward_function(end_node.state,end_node.depth))
 
         inputs = np.array(inputs)
-        evals = np.array(evals)
+        values = np.array(values)
         policies = np.array(policies)
 
-        self.student.neural_network.fit_value(inputs,evals,policies,epochs_per_episode)
+        if self.input_buffer is None:
+            self.input_buffer = inputs
+            self.value_buffer = values
+            self.policy_buffer = policies
+        else:
+            target_buffer_size = self.buffer_size(self.total_tasks)
+            end = target_buffer_size - inputs.shape[0]
+
+            self.input_buffer = np.concatenate([inputs,self.input_buffer[:end]])
+            self.value_buffer = np.concatenate([values, self.value_buffer[:end]])
+            self.policy_buffer = np.concatenate([policies, self.policy_buffer[:end]])
+
+        self.student.neural_network.fit_value(self.input_buffer,self.value_buffer,self.policy_buffer,epochs_per_episode)
 
     def test_students(self, start_states):
 

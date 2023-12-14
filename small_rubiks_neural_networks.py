@@ -94,7 +94,7 @@ class student_network:
     def fit_value(self, states, evals, policies, epochs=1):
 
         inputs = rubiks.make_neural_input(states)
-        self.value_network.fit(x=inputs,y=[evals, policies],batch_size=16, epochs=epochs,shuffle =True)
+        self.value_network.fit(x=inputs,y=[evals, policies],batch_size=32, epochs=epochs,shuffle =True)
 
     def predict_state(self,  states, actions):
 
