@@ -24,9 +24,11 @@ class evaluation_tree_node:
     def compute_policy_statistics(self):
 
         pi = self.task_node.initial_policy
-        q_v = (0.01+pi)*(1.01-pi) / (0.001+self.n)
-        #The choice for pi_v is pretty arbitrary...
-        pi_v =  (0.01+pi)*(1.01-pi) / self.network_trust
+        c = self.task_node.policy_confidence
+        pi_v = c
+
+        #We take the variance of pi as an approximation for the variance for the value of each rollout
+        q_v = c / (0.001+self.n)
         t = pi_v/(q_v+pi_v)
         t[self.n==0] = 0
         p_E = t*self.q+(1-t)*pi

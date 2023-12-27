@@ -20,11 +20,12 @@ class student:
         s = set(task_nodes)
         task_nodes = [t for t in s if not (t.completed or t.expanded)]
 
-        eval,policy = self.neural_network.predict_value(task_nodes)
+        eval,policy,policy_confidence = self.neural_network.predict_value(task_nodes)
 
+        t:task_tree_node
         for i, t in enumerate(task_nodes):
 
-            t.expand(eval[i],policy[i])
+            t.expand(eval[i],policy[i],policy_confidence[i])
 
     def run_simulation_step(self, eval_trees):
 

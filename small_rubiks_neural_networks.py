@@ -55,12 +55,15 @@ class student_network:
         policy = kl.Dense(12)(x)
         policy = kl.Activation('sigmoid',name='policy_output')(policy)
 
-        model = Model(inputs= input,outputs = [eval,policy])
+        policy_confidence = kl.Dense(12)(x)
+        policy_confidence = kl.Activation('sigmoid',name='policy_confidence_output')(policy_confidence)
+
+        model = Model(inputs= input,outputs = [eval,policy,policy_confidence])
 
         opt = Adam(params.learning_rate)
-        losses={'eval_output':'mean_squared_error','policy_output':'mean_squared_error'}
+        losses={'eval_output':'mean_squared_error','policy_output':'mean_squared_error','policy_confidence_output':'mean_squared_error'}
 
-        model.compile(optimizer=opt, loss=losses,loss_weights=[3,1])
+        model.compile(optimizer=opt, loss=losses)
 
         self.value_network = model
 
@@ -86,15 +89,15 @@ class student_network:
             
             nn_input[i] = rubiks.make_neural_input(t.state)
 
-        eval, policy = self.value_network(nn_input)
-        eval, policy = (eval.numpy(),policy.numpy())
+        value, policy, policy_confidence = self.value_network(nn_input)
+        value, policy, policy_confidence = (value.numpy(),policy.numpy(),policy_confidence.numpy())
 
-        return eval, policy
+        return value, policy, policy_confidence
 
-    def fit_value(self, states, evals, policies, epochs=1):
+    def fit_value(self, state, value, policy, policy_confidence, epochs=1):
 
-        inputs = rubiks.make_neural_input(states)
-        self.value_network.fit(x=inputs,y=[evals, policies],batch_size=32, epochs=epochs,shuffle =True)
+        inputs = rubiks.make_neural_input(state)
+        self.value_network.fit(x=inputs,y=[value, policy, policy_confidence],batch_size=32, epochs=epochs,shuffle =True)
 
     def predict_state(self,  states, actions):
 

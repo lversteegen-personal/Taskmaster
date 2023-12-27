@@ -44,12 +44,14 @@ class classroom:
 
         self.total_tasks += n_problems
         inputs = []
+        initial_policies = []
         policies = []
         values = []
         rd:replay_datum
 
         for rd in replay_record:
             inputs.append(rd.task_node.state)
+            initial_policies.append(rd.task_node.initial_policy)
             policies.append(rd.pi)
             end_node:task_tree_node = proof_nodes[rd.task_index]
 
@@ -58,11 +60,13 @@ class classroom:
         inputs = np.array(inputs)
         values = np.array(values)
         policies = np.array(policies)
+        policy_confidences = (np.array(initial_policies)-policies)**2
 
         if self.input_buffer is None:
             self.input_buffer = inputs
             self.value_buffer = values
             self.policy_buffer = policies
+            self.policy_confidence_buffer = policy_confidences
         else:
             target_buffer_size = self.buffer_size(self.total_tasks)
             end = target_buffer_size - inputs.shape[0]
@@ -70,8 +74,9 @@ class classroom:
             self.input_buffer = np.concatenate([inputs,self.input_buffer[:end]])
             self.value_buffer = np.concatenate([values, self.value_buffer[:end]])
             self.policy_buffer = np.concatenate([policies, self.policy_buffer[:end]])
+            self.policy_confidence_buffer = np.concatenate([policies, self.policy_confidence_buffer[:end]])
 
-        self.student.neural_network.fit_value(self.input_buffer,self.value_buffer,self.policy_buffer,epochs_per_episode)
+        self.student.neural_network.fit_value(self.input_buffer,self.value_buffer,self.policy_buffer, self.policy_confidence_buffer, epochs_per_episode)
 
     def test_students(self, start_states):
 
