@@ -86,21 +86,19 @@ class evaluation_tree_node:
 
     def select_exploration(self):
 
-        return self.select_action()[0]
+        p_E,p_V = self.compute_policy_statistics()
+        p_E[self.task_node.invalid_actions] = 0
 
-        # p_E,p_V = self.compute_policy_statistics()
-        # p_E[self.task_node.invalid_actions] = 0
+        while True:
 
-        # while True:
+            x = self.rng.normal(p_E, np.sqrt(p_V))
+            x[self.task_node.invalid_actions] = -100
+            a = np.argmax(x)
 
-        #     x = self.rng.normal(p_E, np.sqrt(p_V))
-        #     x[self.task_node.invalid_actions] = -100
-        #     a = np.argmax(x)
-
-        #     if self.task_node.try_action(a):
-        #         return a
-        #     else:
-        #         p_E[a] = 0
+            if self.task_node.try_action(a):
+                return a
+            else:
+                p_E[a] = 0
 
     def update(self, task_node: task_tree_node):
 
