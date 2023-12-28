@@ -44,23 +44,27 @@ class classroom:
 
         self.total_tasks += n_problems
         inputs = []
-        initial_policies = []
         policies = []
         values = []
+        policy_confidences = []
         rd:replay_datum
 
         for rd in replay_record:
             inputs.append(rd.task_node.state)
-            initial_policies.append(rd.task_node.initial_policy)
             policies.append(rd.pi)
-            end_node:task_tree_node = proof_nodes[rd.task_index]
 
+            end_node:task_tree_node = proof_nodes[rd.task_index]
             values.append(self.task.reward_function(end_node.state,end_node.depth))
+
+            target_confidence = np.abs(rd.task_node.initial_policy-rd.pi)
+            t = 1/(1+rd.eval_tree_root.n)
+            policy_confidences.append(t*rd.task_node.policy_confidence+(1-t)*target_confidence)
 
         inputs = np.array(inputs)
         values = np.array(values)
         policies = np.array(policies)
-        policy_confidences = (np.array(initial_policies)-policies)**2
+        policy_confidences = np.array(policy_confidences)
+
 
         if self.input_buffer is None:
             self.input_buffer = inputs

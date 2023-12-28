@@ -19,16 +19,15 @@ class evaluation_tree_node:
         self.pow = 1
         self.exploration_constant = 1
 
-        self.network_trust = 1
+        self.value_network_trust = 0.5
 
     def compute_policy_statistics(self):
 
         pi = self.task_node.initial_policy
-        c = self.task_node.policy_confidence
-        pi_v = c
+        pi_v = self.task_node.policy_confidence ** 2 + 0.0001
 
         #We take the variance of pi as an approximation for the variance for the value of each rollout
-        q_v = c / (0.001+self.n)
+        q_v = pi_v / (0.001+self.n) / self.value_network_trust
         t = pi_v/(q_v+pi_v)
         t[self.n==0] = 0
         p_E = t*self.q+(1-t)*pi
@@ -73,14 +72,12 @@ class evaluation_tree_node:
 
     def select_action(self):
 
-        p_E,p_V = self.compute_policy_statistics()
+        p_E,_ = self.compute_policy_statistics()
         p_E[self.task_node.invalid_actions] = 0
 
         while True:
 
-            x = self.rng.normal(p_E, np.sqrt(p_V))
-            x[self.task_node.invalid_actions] = -100
-            a = np.argmax(x)
+            a = np.argmax(p_E)
 
             if self.task_node.try_action(a):
                 return a, p_E
@@ -90,19 +87,20 @@ class evaluation_tree_node:
     def select_exploration(self):
 
         return self.select_action()[0]
-        
-        # pi = self.compute_policy_statistics()
-        # pi[self.task_node.invalid_actions] = 0
+
+        # p_E,p_V = self.compute_policy_statistics()
+        # p_E[self.task_node.invalid_actions] = 0
 
         # while True:
 
-        #     pi /= pi.sum()
-        #     a = self.rng.choice(self.n_actions, p=pi)
+        #     x = self.rng.normal(p_E, np.sqrt(p_V))
+        #     x[self.task_node.invalid_actions] = -100
+        #     a = np.argmax(x)
 
         #     if self.task_node.try_action(a):
         #         return a
         #     else:
-        #         pi[a] = 0
+        #         p_E[a] = 0
 
     def update(self, task_node: task_tree_node):
 
