@@ -109,7 +109,7 @@ class evaluation_tree_node:
                 return
 
         if task_node.completed:
-            v = task_node.task.reward_function(task_node.state,task_node.depth)
+            v = task_node.task.reward_function(task_node.state,task_node.depth-self.task_node.depth)
         else:
             v = task_node.initial_evaluation
 

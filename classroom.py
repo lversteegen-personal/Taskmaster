@@ -54,7 +54,7 @@ class classroom:
             policies.append(rd.pi)
 
             end_node:task_tree_node = proof_nodes[rd.task_index]
-            values.append(rd.pi.max()*self.task.reward_function(end_node.state,end_node.depth))
+            values.append(self.task.reward_function(end_node.state,end_node.depth-rd.task_node.depth))
 
             target_confidence = np.abs(rd.task_node.initial_policy-rd.pi)
             t = 1/(1+rd.eval_tree_root.n)
@@ -99,6 +99,9 @@ class classroom:
         for s in range(self.max_steps):
 
             unfinished_task_indices = [i for i,p in enumerate(task_nodes) if not p.completed]
+            if len(unfinished_task_indices) == 0:
+                break
+            
             print(f"Before step {s+1}, {len(unfinished_task_indices)} out of {len(task_nodes)} remain open.")
             result = self.student.run_action_step([task_nodes[i] for i in unfinished_task_indices])
 
@@ -112,7 +115,9 @@ class classroom:
                 datum = replay_datum(old_node,new_node,action, pi, eval_root, k)
                 replay_record.append(datum)
 
+            
+
         unfinished_task_indices = [i for i,p in enumerate(task_nodes) if not p.completed]
-        print(f"After step {self.max_steps}, {len(unfinished_task_indices)} out of {len(task_nodes)} remain open.")
+        print(f"After step {s+1}, {len(unfinished_task_indices)} out of {len(task_nodes)} remain open.")
 
         return replay_record, task_nodes
