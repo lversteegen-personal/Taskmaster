@@ -11,22 +11,46 @@ from task_tree import task_tree_node
 import small_rubiks as rubiks
 
 from utils import dotdict
+import pickle 
 
 class student_network:
 
-    def __init__(self):
+    def __init__(self, params):
 
-        self.state_size = 24*6
-        self.action_codes = 12
+        self.state_size = params.state_size
+        self.action_codes = params.action_codes
+        self.params = params
+    
 
     def create(params):
 
-        combined = student_network()
+        combined = student_network(params)
         combined.build_core(params.core_params)
         combined.build_value_network(params.value_network_params)
         combined.build_state_network(params.state_network_params)
 
         return combined
+
+    def load(path):
+
+        with open(path+"_params.obj", 'rb') as file:
+            params = pickle.load(file)
+
+        network = student_network.create(params)
+        network.state_network.load_weights(path+"_state_network.ckpt")
+        network.value_network.load_weights(path+"_value_network.ckpt")
+
+        return network
+
+    def save(self, path):
+
+        with open(path+"_params.obj", 'wb') as file:
+            pickle.dump(self.params,file)
+
+        self.value_network.save(path+"_value_network.ckpt")
+        self.state_network.save(path+"_state_network.ckpt")
+
+        print(f"Network saved under {path}.")
 
     def build_core(self,params):
         

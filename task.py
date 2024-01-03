@@ -1,7 +1,10 @@
+from typing import Callable
+
 class task:
 
-    def __init__(self, n_actions, action, check_completed, reward_function, make_input):
+    def __init__(self, state_size:int, n_actions:int, action:Callable, check_completed:Callable, reward_function:Callable, make_input:Callable):
 
+        self.state_size = state_size
         self.n_actions = n_actions
         self.action = action
         self.check_completed = check_completed

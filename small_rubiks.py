@@ -225,5 +225,5 @@ def reward_function(state):
     else:
         return 0
 
-rubiks_task = task(12,task_action,check_win, reward_function,make_neural_input)
+rubiks_task = task(24*6,12,task_action,check_win, reward_function,make_neural_input)
 rubiks_setup = setup(np.arange(24),12,task_action)
