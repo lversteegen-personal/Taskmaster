@@ -40,13 +40,13 @@ class student_network:
         eval = kl.Dense(1)(x)
         eval = kl.Activation('sigmoid',name='eval_output')(eval)
 
-        policy = kl.Dense(18)(x)
-        policy = kl.Softmax(name='policy_output')(policy)
+        reward = kl.Dense(18)(x)
+        reward = kl.Softmax(name='reward_output')(reward)
 
-        model = Model(inputs= input,outputs = [eval,policy])
+        model = Model(inputs= input,outputs = [eval,reward])
 
         opt = Adam(learning_rate=0.01)
-        losses={'eval_output':'kl_divergence','policy_output':'kl_divergence'}
+        losses={'eval_output':'kl_divergence','reward_output':'kl_divergence'}
 
         model.compile(optimizer=opt, loss=losses,loss_weights=[3,1])
 
@@ -74,10 +74,10 @@ class student_network:
             
             nn_input[i] = rubiks.make_neural_input(t.state)
 
-        eval, policy = self.neural_network(nn_input)
-        eval, policy = (eval.numpy(),policy.numpy())
+        eval, reward = self.neural_network(nn_input)
+        eval, reward = (eval.numpy(),reward.numpy())
 
-        return nn_input, eval, policy
+        return nn_input, eval, reward
 
     def fit(self, inputs, evals, policies):
 

@@ -30,7 +30,7 @@ class task_tree_node:
             self.invalid_actions[action_code] = True
             return False
 
-    def expand(self, initial_evaluation, initial_policy, policy_confidence):
+    def expand(self, initial_evaluation, initial_reward, reward_confidence):
 
         if self.completed:
             raise RuntimeError("This state is completed and should not have been evaluated.")
@@ -39,7 +39,7 @@ class task_tree_node:
 
         self.expanded = True
         self.initial_evaluation = initial_evaluation
-        self.initial_policy = initial_policy
-        self.policy_confidence = policy_confidence
+        self.initial_reward = initial_reward
+        self.reward_confidence = reward_confidence
         self.children = [None]*self.task.n_actions
         self.invalid_actions = np.zeros(self.task.n_actions,dtype=bool)

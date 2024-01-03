@@ -5,7 +5,7 @@ from scipy.stats import norm as normal_dist
 
 class evaluation_tree_node:
 
-    def __init__(self, task_node: task_tree_node):
+    def __init__(self, task_node: task_tree_node, reward_discount):
 
         self.task_node: task_tree_node = task_node
         self.total_visits = 0
@@ -20,11 +20,12 @@ class evaluation_tree_node:
         self.exploration_constant = 1
 
         self.value_network_trust = 0.5
+        self.reward_discount = reward_discount
 
-    def compute_policy_statistics(self):
+    def compute_reward_statistics(self):
 
-        pi = self.task_node.initial_policy
-        pi_v = self.task_node.policy_confidence ** 2 + 0.0001
+        pi = self.task_node.initial_reward
+        pi_v = self.task_node.reward_confidence ** 2 + 0.001
 
         #We take the variance of pi as an approximation for the variance for the value of each rollout
         q_v = pi_v / (0.001+self.n) / self.value_network_trust
@@ -34,28 +35,6 @@ class evaluation_tree_node:
         p_V = t**2*q_v+(1-t)**2*pi_v
 
         return p_E, p_V
-
-    def compute_current_policy_advanced(self):
-
-        if not self.task_node.expanded:
-            raise RuntimeError("Underlying state is not expanded")
-
-        base_pi = self.task_node.initial_policy
-        l = math.sqrt(1/(self.total_visits+1))
-
-        a_min = np.max(self.q + l*base_pi)
-        a_max = np.max(self.q + l)
-
-        while abs(a_max-a_min) > 0.001:
-            a = (a_min+a_max)/2
-            c = np.sum(base_pi/(a-self.q)) * l
-            if c > 1:
-                a_min = a
-            else:
-                a_max = a
-
-        a = (a_min+a_max)/2
-        return base_pi/(a-self.q) * l
 
     def find_leaf(self):
 
@@ -72,7 +51,7 @@ class evaluation_tree_node:
 
     def select_action(self):
 
-        p_E,_ = self.compute_policy_statistics()
+        p_E,_ = self.compute_reward_statistics()
         p_E[self.task_node.invalid_actions] = 0
 
         while True:
@@ -86,7 +65,7 @@ class evaluation_tree_node:
 
     def select_exploration(self):
 
-        p_E,p_V = self.compute_policy_statistics()
+        p_E,p_V = self.compute_reward_statistics()
         p_E[self.task_node.invalid_actions] = 0
 
         while True:
@@ -109,12 +88,14 @@ class evaluation_tree_node:
                 return
 
         if task_node.completed:
-            v = task_node.task.reward_function(task_node.state,task_node.depth-self.task_node.depth)
+            v = task_node.task.reward_function(task_node.state)
         else:
             v = task_node.initial_evaluation
 
+        v*=self.reward_discount**(task_node.depth-self.task_node.depth)
+
         if self.n[self.direct_to] == 0:
-            self.children[self.direct_to] = evaluation_tree_node(task_node)
+            self.children[self.direct_to] = evaluation_tree_node(task_node, self.reward_discount)
         else:
             self.children[self.direct_to].update(task_node)
 

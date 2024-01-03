@@ -31,7 +31,7 @@ class classroom:
         self.max_steps = max_steps
 
         self.input_buffer = None
-        self.policy_buffer = None
+        self.reward_buffer = None
         self.value_buffer = None
 
         self.buffer_size = buffer_size
@@ -46,7 +46,7 @@ class classroom:
         inputs = []
         policies = []
         values = []
-        policy_confidences = []
+        reward_confidences = []
         rd:replay_datum
 
         for rd in replay_record:
@@ -54,33 +54,35 @@ class classroom:
             policies.append(rd.pi)
 
             end_node:task_tree_node = proof_nodes[rd.task_index]
-            values.append(self.task.reward_function(end_node.state,end_node.depth-rd.task_node.depth))
+            values.append(self.task.reward_function(end_node.state)*self.student.reward_discount**(end_node.depth-rd.task_node.depth))
 
-            target_confidence = np.abs(rd.task_node.initial_policy-rd.pi)
+            target_confidence = np.abs(rd.task_node.initial_reward-rd.pi)
             t = 1/(1+rd.eval_tree_root.n)
-            policy_confidences.append(t*rd.task_node.policy_confidence+(1-t)*target_confidence)
+            reward_confidences.append(np.maximum(0.001,t*rd.task_node.reward_confidence+(1-t)*target_confidence))
 
         inputs = np.array(inputs)
         values = np.array(values)
         policies = np.array(policies)
-        policy_confidences = np.array(policy_confidences)
+        reward_confidences = np.array(reward_confidences)
 
 
         if self.input_buffer is None:
             self.input_buffer = inputs
             self.value_buffer = values
-            self.policy_buffer = policies
-            self.policy_confidence_buffer = policy_confidences
+            self.reward_buffer = policies
+            self.reward_confidence_buffer = reward_confidences
         else:
             target_buffer_size = self.buffer_size(self.total_tasks)
             end = target_buffer_size - inputs.shape[0]
 
             self.input_buffer = np.concatenate([inputs,self.input_buffer[:end]])
             self.value_buffer = np.concatenate([values, self.value_buffer[:end]])
-            self.policy_buffer = np.concatenate([policies, self.policy_buffer[:end]])
-            self.policy_confidence_buffer = np.concatenate([policies, self.policy_confidence_buffer[:end]])
+            self.reward_buffer = np.concatenate([policies, self.reward_buffer[:end]])
+            self.reward_confidence_buffer = np.concatenate([policies, self.reward_confidence_buffer[:end]])
 
-        self.student.neural_network.fit_value(self.input_buffer,self.value_buffer,self.policy_buffer, self.policy_confidence_buffer, epochs_per_episode)
+        state_inputs = self.task.make_input(self.input_buffer)
+
+        self.student.neural_network.fit_value(state_inputs,self.value_buffer,self.reward_buffer, self.reward_confidence_buffer, epochs_per_episode)
 
     def test_students(self, start_states):
 
@@ -114,8 +116,6 @@ class classroom:
 
                 datum = replay_datum(old_node,new_node,action, pi, eval_root, k)
                 replay_record.append(datum)
-
-            
 
         unfinished_task_indices = [i for i,p in enumerate(task_nodes) if not p.completed]
         print(f"After step {s+1}, {len(unfinished_task_indices)} out of {len(task_nodes)} remain open.")

@@ -159,7 +159,7 @@ def print_coloring(cube_state, color_array=False):
 
 winning_states = []
 
-s1 = np.array(range(24),dtype=int)
+s1 = np.array(range(54),dtype=int)
 
 def turn_all_layers(state, axis, reverse = False):
 
@@ -181,11 +181,6 @@ for _ in range(4):
     s2=turn_all_layers(s1,axis=2,reverse=True)
     winning_states.append(start_coloring[s2])
 
-compare = np.zeros((24,24),dtype=bool)
-for i,j in itertools.product(range(24),range(24)):
-    if i!= j:
-        compare[i,j] = (winning_states[i] == winning_states[j]).all()
-
 #Call this function on a set of cubes to see which of them are finished
 def check_win(state):
 
@@ -197,45 +192,42 @@ def check_win(state):
 
     return False
 
-# def check_win(states):
-
-#     n,_ = states.shape
-
-#     won = np.zeros(n,dtype=bool)
-#     for s in winning_states:
-#         won = np.logical_or(won,np.all(states==s[None,:],axis=1))
-
-#     return won
-
 #Call this function to turn the cube. Code 6a+2l turns layer l of axis a 
 #in mathematically positive direction when looking on the fingertip in a left-handed coordinate system.
 #Code 6a+2l+1 turns in reverse direction, and code -1 leaves the cube as before. 
 
+#Call this function to turn the cube. Code 6a+2l turns layer l of axis a 
+#in mathematically positive direction when looking on the fingertip in a left-handed coordinate system.
+#Code 6a+2l+1 turns in reverse direction, and code -1 leaves the cube as before. 
 def task_action(state, action_code):
     
-    return True, state[np_turns[action_code]]
-
-# def task_action(states, action_codes):
-
-#     n,columns = states.shape
-#     if columns != 54:
-#         raise Exception("Each cube must have length 54")
-    
-#     turns = np_turns[action_codes]
-#     return np.take_along_axis(states, turns, axis = 1)
+    if state.ndim == 2:
+        n = state.shape[0]
+        return np.ones(n,dtype=bool), np.take_along_axis(state,np_turns[action_code,:],axis=1)
+    else:
+        return True, state[np_turns[action_code]]
 
 def make_neural_input(state):
 
-    colors = start_coloring[state]
-    input = np.zeros((54,6),dtype=float)
-    input[np.arange(54,dtype=int),colors] = 1.0
-    return input.flatten()
+    if state.ndim == 2:
+        n = state.shape[0]
+        colors = np.take_along_axis(start_coloring[None,:],state,axis=1)
+        return (np.arange(6) == colors[...,None]).astype(float).reshape((n,-1))
+    else:
+        colors = start_coloring[state]
+        input = np.zeros((54,6),dtype=float)
+        input[np.arange(54,dtype=int),colors] = 1.0
+        return input.flatten()
 
-gamma = 0
+#gamma is the factor with which the reward is discounted
+gamma = .95
 
 def reward_function(state, steps):
 
-    return 1 - gamma+ gamma/steps
+    if check_win(state):
+        return gamma**steps
+    else:
+        return 0
 
-rubiks_task = task(18,task_action,check_win, reward_function)
+rubiks_task = task(18,task_action,check_win, reward_function, make_neural_input)
 rubiks_setup = setup(np.arange(54),18,task_action)

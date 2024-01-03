@@ -52,16 +52,16 @@ class student_network:
         eval = kl.Dense(1,kernel_regularizer=params.residual_weights_reg)(x)
         eval = kl.Activation('sigmoid',name='eval_output')(eval)
 
-        policy = kl.Dense(12)(x)
-        policy = kl.Activation('sigmoid',name='policy_output')(policy)
+        reward = kl.Dense(12)(x)
+        reward = kl.Activation('sigmoid',name='reward_output')(reward)
 
-        policy_confidence = kl.Dense(12)(x)
-        policy_confidence = kl.Activation('sigmoid',name='policy_confidence_output')(policy_confidence)
+        reward_confidence = kl.Dense(12)(x)
+        reward_confidence = kl.Activation('sigmoid',name='reward_confidence_output')(reward_confidence)
 
-        model = Model(inputs= input,outputs = [eval,policy,policy_confidence])
+        model = Model(inputs= input,outputs = [eval,reward,reward_confidence])
 
         opt = Adam(params.learning_rate)
-        losses={'eval_output':'mean_squared_error','policy_output':'mean_squared_error','policy_confidence_output':'mean_squared_error'}
+        losses={'eval_output':'mean_squared_error','reward_output':'mean_squared_error','reward_confidence_output':'mean_squared_error'}
 
         model.compile(optimizer=opt, loss=losses)
 
@@ -89,15 +89,15 @@ class student_network:
             
             nn_input[i] = rubiks.make_neural_input(t.state)
 
-        value, policy, policy_confidence = self.value_network(nn_input)
-        value, policy, policy_confidence = (value.numpy(),policy.numpy(),policy_confidence.numpy())
+        value, reward, reward_confidence = self.value_network(nn_input)
+        value, reward, reward_confidence = (value.numpy(),reward.numpy(),reward_confidence.numpy())
 
-        return value, policy, policy_confidence
+        return value, reward, reward_confidence
 
-    def fit_value(self, state, value, policy, policy_confidence, epochs=1):
+    def fit_value(self, state, value, reward, reward_confidence, epochs=1):
 
         inputs = rubiks.make_neural_input(state)
-        self.value_network.fit(x=inputs,y=[value, policy, policy_confidence],batch_size=32, epochs=epochs,shuffle =True)
+        self.value_network.fit(x=inputs,y=[value, reward, reward_confidence],batch_size=32, epochs=epochs,shuffle =True)
 
     def predict_state(self,  states, actions):
 
@@ -131,7 +131,7 @@ class student_network:
             x = self.make_residual_layer(x, params)
 
         next_state = kl.Dense(self.state_size)(x)
-        next_state = kl.Activation('sigmoid',name='policy_output')(next_state)
+        next_state = kl.Activation('sigmoid',name='state_output')(next_state)
 
         model = Model(inputs=[state_input,action_input],outputs = next_state)
         opt = Adam(learning_rate=params.learning_rate)

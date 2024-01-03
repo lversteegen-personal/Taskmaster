@@ -6,13 +6,14 @@ from task import task
 
 class student:
 
-    def __init__(self, task:task, n_sim, neural_network):
+    def __init__(self, task:task, n_sim, neural_network, reward_discount):
 
         self.task = task
         self.n_actions = task.n_actions
         self.n_sim = n_sim
 
         self.neural_network = neural_network
+        self.reward_discount = reward_discount
 
     def expand_task_nodes(self, task_nodes:list):
 
@@ -20,12 +21,19 @@ class student:
         s = set(task_nodes)
         task_nodes = [t for t in s if not (t.completed or t.expanded)]
 
-        eval,policy,policy_confidence = self.neural_network.predict_value(task_nodes)
+        if len(task_nodes) == 0:
+            return
+
+        #Each row has the form [state] (add context functionality later)
+        states = np.array([t.state for t in task_nodes],dtype=int)
+        state_input = self.task.make_input(states)
+
+        eval,reward,reward_confidence = self.neural_network.predict_value(state_input)
 
         t:task_tree_node
         for i, t in enumerate(task_nodes):
 
-            t.expand(eval[i],policy[i],policy_confidence[i])
+            t.expand(eval[i],reward[i],reward_confidence[i])
 
     def run_simulation_step(self, eval_trees):
 
@@ -54,7 +62,7 @@ class student:
 
         self.expand_task_nodes(to_expand)
 
-        initial_eval_trees = [evaluation_tree_node(t) for t in task_nodes]
+        initial_eval_trees = [evaluation_tree_node(t,self.reward_discount) for t in task_nodes]
         eval_trees = set(initial_eval_trees)
 
         for i in range(self.n_sim):
