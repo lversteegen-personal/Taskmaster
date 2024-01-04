@@ -219,13 +219,10 @@ def make_neural_input(state):
         input[np.arange(54,dtype=int),colors] = 1.0
         return input.flatten()
 
-#gamma is the factor with which the reward is discounted
-gamma = .95
-
-def reward_function(state, steps):
+def reward_function(state):
 
     if check_win(state):
-        return gamma**steps
+        return 1
     else:
         return 0
 
