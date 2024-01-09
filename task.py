@@ -2,9 +2,9 @@ from typing import Callable
 
 class task:
 
-    def __init__(self, state_size:int, n_actions:int, action:Callable, check_completed:Callable, reward_function:Callable, make_input:Callable):
+    def __init__(self, input_size:int, n_actions:int, action:Callable, check_completed:Callable, reward_function:Callable, make_input:Callable):
 
-        self.state_size = state_size
+        self.input_size = input_size
         self.n_actions = n_actions
         self.action = action
         self.check_completed = check_completed

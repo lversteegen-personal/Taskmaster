@@ -114,11 +114,11 @@ for i,j in itertools.product([-1,0,1],[-1,0,1]):
 if np.max(faces == -1) > 0:
     raise Exception()
 
-def get_colors(cube_state):
+def get_colors(flat_colors):
 
     colors = -np.ones((6,3,3),dtype=int)
     for f,i,j in itertools.product(range(6),range(3),range(3)):
-        colors[f,i,j] = start_coloring[cube_state[faces[f,i,j]]]
+        colors[f,i,j] = flat_colors[faces[f,i,j]]
 
     if np.max(colors == -1) > 0:
         raise Exception()

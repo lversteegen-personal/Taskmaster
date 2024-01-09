@@ -11,7 +11,6 @@ class teacher:
 
     def generate_problems(self, n):
 
-        n_actions = self.setup.n_actions
         steps = self.step_dist(n)
         states = []
 

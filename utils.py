@@ -1,3 +1,5 @@
+import keras
+
 class dotdict:
     def __init__(self, base_dict):
 
@@ -8,3 +10,10 @@ class dotdict:
 
     def __reduce__(self):
         return (self.__class__, (self.base_dict,))
+
+#There seems to be no reasonable way to copy a model including its optimizer
+def copy_network(network):
+
+    network.save("temp.h5")
+    return keras.models.load_model("temp.h5")
+    

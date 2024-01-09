@@ -24,11 +24,15 @@ class evaluation_tree_node:
 
     def compute_reward_statistics(self):
 
+        #pi=task_node.initial_reward is the neural network's estimate of the reward for each action
+        #task_node.reward_confidence is the neural network's estimate for the standard error of its reward estimates
         pi = self.task_node.initial_reward
         pi_v = self.task_node.reward_confidence ** 2 + 0.001
 
-        #We take the variance of pi as an approximation for the variance for the value of each rollout
+        #self.q is the monte carlo estimate of the reward for each action
         q_v = pi_v / (0.001+self.n) / self.value_network_trust
+
+        #To estimate the reward for each action, we take the convex combination of pi and self.q that minimizes the standard error
         t = pi_v/(q_v+pi_v)
         t[self.n==0] = 0
         p_E = t*self.q+(1-t)*pi
@@ -65,12 +69,15 @@ class evaluation_tree_node:
 
     def select_exploration(self):
 
+        #Compute the expectation and reward for all possible actions
         p_E,p_V = self.compute_reward_statistics()
         p_E[self.task_node.invalid_actions] = 0
 
         while True:
 
-            x = self.rng.normal(p_E, np.sqrt(p_V))
+            #Explore the action for which the UCB one standard deviation above the expectation is largest
+            x = p_E+np.sqrt(p_V)
+            #x = self.rng.normal(p_E, np.sqrt(p_V)) #Alternatively, we sample according to the probability of each action having the highest reward
             x[self.task_node.invalid_actions] = -100
             a = np.argmax(x)
 

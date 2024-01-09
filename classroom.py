@@ -56,6 +56,8 @@ class classroom:
             end_node:task_tree_node = proof_nodes[rd.task_index]
             values.append(self.task.reward_function(end_node.state)*self.student.reward_discount**(end_node.depth-rd.task_node.depth))
 
+            #We only want to change the confidence for the estimated rewards for those 
+            #actions that have actually been explored during the MCTS
             target_confidence = np.abs(rd.task_node.initial_reward-rd.pi)
             t = 1/(1+rd.eval_tree_root.n)
             reward_confidences.append(np.maximum(0.001,t*rd.task_node.reward_confidence+(1-t)*target_confidence))
