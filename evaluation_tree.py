@@ -19,7 +19,7 @@ class evaluation_tree_node:
         self.pow = 1
         self.exploration_constant = 1
 
-        self.value_network_trust = 0.5
+        self.value_network_scale = 2.0
         self.reward_discount = reward_discount
 
     def compute_reward_statistics(self):
@@ -30,7 +30,7 @@ class evaluation_tree_node:
         pi_v = self.task_node.reward_confidence ** 2 + 0.001
 
         #self.q is the monte carlo estimate of the reward for each action
-        q_v = pi_v / (0.001+self.n) / self.value_network_trust
+        q_v = self.value_network_scale * pi_v / (0.001+self.n)
 
         #To estimate the reward for each action, we take the convex combination of pi and self.q that minimizes the standard error
         t = pi_v/(q_v+pi_v)

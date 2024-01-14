@@ -7,6 +7,8 @@ from keras.optimizers import Adam
 import tensorflow as tf
 import keras
 
+from weighted_model import WeightedModel
+
 from task_tree import task_tree_node
 import small_rubiks as rubiks
 
@@ -85,7 +87,7 @@ class student_network:
             y = self.make_residual_layer(y, params)
 
         y = kl.Dense(1,kernel_regularizer=params.residual_weights_reg)(y)
-        value = kl.Activation('sigmoid',name='value_output')(y)
+        value = kl.Activation('softplus',name='value_output')(y)
 
         y=x
         for _ in range(params.reward_fork_layers):
@@ -93,14 +95,14 @@ class student_network:
             y = self.make_residual_layer(y, params)
 
         reward = kl.Dense(self.action_codes)(y)
-        reward = kl.Activation('sigmoid',name='reward_output')(reward)
+        reward = kl.Activation('softplus',name='reward_output')(reward)
 
         reward_confidence = kl.Dense(self.action_codes)(y)
-        reward_confidence = kl.Activation('sigmoid',name='reward_confidence_output')(reward_confidence)
+        reward_confidence = kl.Activation('softplus',name='reward_confidence_output')(reward_confidence)
 
-        model = Model(inputs= self.state_input,outputs = [value,reward,reward_confidence])
+        model = WeightedModel(inputs= self.state_input,outputs = [value,reward,reward_confidence])
 
-        opt = Adam(params.learning_rate)
+        opt = Adam(params.learning_rate,clipvalue=1)
         losses={'value_output':'mean_squared_error','reward_output':'mean_squared_error','reward_confidence_output':'mean_squared_error'}
 
         model.compile(optimizer=opt, loss=losses)
@@ -149,9 +151,9 @@ class student_network:
 
         return value, reward, reward_confidence
 
-    def fit_value(self, input_state, value, reward, reward_confidence, epochs=1):
+    def fit_value(self, input_state, value, reward, reward_confidence, reward_weights, epochs=1):
 
-        self.value_network.fit(x=input_state,y=[value, reward, reward_confidence],batch_size=64, epochs=epochs,shuffle =True)
+        self.value_network.fit(x=input_state,y=[value, reward, reward_confidence],sample_weight=reward_weights, batch_size=64, epochs=epochs,shuffle =True)
 
     def predict_state(self,  states, actions):
 
