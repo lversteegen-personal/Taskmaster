@@ -2,7 +2,7 @@ import keras
 import tensorflow as tf
 
 
-#@tf.function
+@tf.function
 def weighted_reward_loss(y_true: tf.Tensor, y_pred: tf.Tensor, weights: tf.Tensor = None):
 
     log = tf.math.multiply(tf.abs(tf.math.log(y_pred+1e-5)), y_true)
@@ -13,7 +13,7 @@ def weighted_reward_loss(y_true: tf.Tensor, y_pred: tf.Tensor, weights: tf.Tenso
     else:
         return tf.reduce_sum(square*(1+log)*weights, axis=-1)
 
-
+@tf.function
 def weighted_confidence_loss(y_true: tf.Tensor, y_pred: tf.Tensor, weights: tf.Tensor = None):
 
     log = tf.maximum(0.0, tf.math.log(y_true+1e-5)-tf.math.log(y_pred+1e-5))
@@ -23,6 +23,16 @@ def weighted_confidence_loss(y_true: tf.Tensor, y_pred: tf.Tensor, weights: tf.T
         return tf.reduce_mean(log+square, axis=-1)
     else:
         return tf.reduce_sum((log+square)*weights, axis=-1)
+
+@tf.function
+def weighted_mse(y_true: tf.Tensor, y_pred: tf.Tensor, weights: tf.Tensor = None):
+
+    square = tf.square(y_pred-y_true)
+
+    if weights == None:
+        return tf.reduce_mean(square, axis=-1)
+    else:
+        return tf.reduce_sum(square*weights, axis=-1)
 
 
 class WeightedModel(keras.Model):
@@ -52,8 +62,8 @@ class WeightedModel(keras.Model):
         # compute loss
         with tf.GradientTape() as tape:
             y_pred = self(x, training=True)
-            value_loss = weighted_reward_loss(y_true[0][:,None], y_pred[0])
-            reward_loss = weighted_reward_loss(y_true[1], y_pred[1], weights)
+            value_loss = weighted_mse(y_true[0][:,None], y_pred[0])
+            reward_loss = weighted_mse(y_true[1], y_pred[1], weights)
             reward_confidence_loss = weighted_confidence_loss(
                 y_true[2], y_pred[2], weights)
             loss = value_loss + reward_loss + reward_confidence_loss

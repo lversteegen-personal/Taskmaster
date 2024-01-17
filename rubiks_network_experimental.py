@@ -11,11 +11,9 @@ import keras
 from custom_layers.inverse_polynomial_liner_unit import IPLU
 from keras.layers import ELU
 from keras.layers import LeakyReLU
+from custom_layers.unit_regularizer import UnitRegularizer
 
 from weighted_model import WeightedModel
-
-from task_tree import task_tree_node
-import small_rubiks as rubiks
 
 from utils import dotdict, copy_network
 import pickle
@@ -29,6 +27,11 @@ def reward_loss(y_true: tf.Tensor, y_pred: tf.Tensor):
     log = tf.math.multiply(tf.abs(tf.math.log(y_pred)), y_true)
     square = tf.square(y_pred-y_true)
     return tf.reduce_mean(square*(1+log), axis=-1)
+
+@tf.function
+def crossentropy_loss(y_true: tf.Tensor, y_pred: tf.Tensor):
+
+    return -tf.reduce_mean(tf.reduce_sum(y_true*tf.math.log(y_pred+1e-5),axis=-1),axis=-1)
 
 
 class student_network:
@@ -80,7 +83,7 @@ class student_network:
         x = self.core
         x = kl.GaussianNoise(0.03)(x)
 
-        x = kl.Dense(16*16*6,kernel_regularizer=regularizers.l1(1e-5))(x)
+        x = kl.Dense(16*16*6,kernel_regularizer=UnitRegularizer(1e-3))(x)
         x = kl.LeakyReLU(0.05)(x)
         x = kl.Reshape(target_shape=(16, 16, 6))(x)
         
@@ -121,13 +124,14 @@ class student_network:
 
     def build_state_network(self, params):
 
+        reg = UnitRegularizer(1e-3,1e-3)
         core_input = self.core
         action_input = kl.Input(self.action_codes, name="action_input")
         x: tf.Tensor = kl.Concatenate()([core_input, action_input])
 
-        x = kl.Dense(16*16*6,kernel_regularizer=regularizers.l1(1e-5))(x)
+        x = kl.Dense(16*16*7,kernel_regularizer=reg)(x)
         x = kl.LeakyReLU(0.05)(x)
-        x = kl.Reshape(target_shape=(16, 16, 6))(x)
+        x = kl.Reshape(target_shape=(16, 16, 7))(x)
         
         x = kl.Conv2D(filters=32, kernel_size=2, padding="same")(x)
         x = kl.LeakyReLU(0.05)(x)
@@ -146,15 +150,15 @@ class student_network:
         x = kl.BatchNormalization()(x)
         x = kl.Flatten()(x)
 
-        next_state = kl.Dense(self.state_size,kernel_regularizer=regularizers.l1(1e-5))(x)
+        next_state = kl.Dense(self.state_size,kernel_regularizer=reg)(x)
         next_state = kl.Reshape(target_shape=(54,6))(next_state)
-        next_state = kl.Softmax(axis=-1)(next_state)
-        next_state = kl.Flatten(name='state_output')(next_state)
+        next_state = kl.Softmax(name='state_output',axis=-1)(next_state)
+        #next_state = kl.Flatten()(next_state)
         #next_state = kl.Activation('sigmoid',name='state_output')(next_state)
 
         model = Model(inputs=[self.state_input,action_input],outputs = next_state)
-        opt = Adam(learning_rate=params.learning_rate)
-        model.compile(optimizer=opt,loss="binary_crossentropy")
+        opt = Adam(learning_rate=params.learning_rate,clipvalue=1)
+        model.compile(optimizer=opt,loss=crossentropy_loss,metrics=["accuracy"])
 
         self.state_network = model
 
