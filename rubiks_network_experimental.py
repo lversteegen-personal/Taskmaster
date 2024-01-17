@@ -31,7 +31,7 @@ def reward_loss(y_true: tf.Tensor, y_pred: tf.Tensor):
 @tf.function
 def crossentropy_loss(y_true: tf.Tensor, y_pred: tf.Tensor):
 
-    return -tf.reduce_mean(tf.reduce_sum(y_true*tf.math.log(y_pred+1e-5),axis=-1),axis=-1)
+    return tf.reduce_mean(tf.square(tf.reduce_sum(y_true*tf.math.log(y_pred+1e-5),axis=-1)),axis=-1)
 
 
 class student_network:
@@ -124,7 +124,7 @@ class student_network:
 
     def build_state_network(self, params):
 
-        reg = UnitRegularizer(1e-3,1e-3)
+        reg = params.residual_weights_reg
         core_input = self.core
         action_input = kl.Input(self.action_codes, name="action_input")
         x: tf.Tensor = kl.Concatenate()([core_input, action_input])
