@@ -2,9 +2,12 @@ from typing import Callable
 
 class task:
 
-    def __init__(self, input_size:int, n_actions:int, action:Callable, check_completed:Callable, reward_function:Callable, make_input:Callable):
+    def __init__(self, state_shape, one_hot_categories:int, n_actions:int, action:Callable, check_completed:Callable, reward_function:Callable, make_input:Callable):
 
-        self.input_size = input_size
+        if isinstance(state_shape,int):
+            state_shape = (state_shape,)
+        self.state_shape = state_shape
+        self.one_hot_categories = one_hot_categories
         self.n_actions = n_actions
         self.action = action
         self.check_completed = check_completed

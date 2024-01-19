@@ -1,7 +1,7 @@
 import keras
 import tensorflow as tf
 
-
+     
 class UnitRegularizer(keras.regularizers.Regularizer):
 
     def __init__(self, row_strength=0.01, column_strength=0.01):

@@ -137,7 +137,7 @@ for i,j in itertools.product(range(3),range(3)):
     mesh_positions.append((9+i,3+j, 5,i,j))
 
 #Outputs the mesh of a cube on the console
-def print_coloring(cube_state, color_array=False):
+def print_coloring(cube_state, color_array=True):
 
     if color_array:
         colors = get_colors(cube_state)
@@ -184,10 +184,8 @@ for _ in range(4):
 #Call this function on a set of cubes to see which of them are finished
 def check_win(state):
 
-    colors = start_coloring[state]
-
     for w in winning_states:
-        if (colors==w).all():
+        if (state==w).all():
             return True
 
     return False
@@ -211,12 +209,11 @@ def make_neural_input(state):
 
     if state.ndim == 2:
         n = state.shape[0]
-        colors = np.take_along_axis(start_coloring[None,:],state,axis=1)
-        return (np.arange(6) == colors[...,None]).astype(float).reshape((n,-1))
+        return (np.arange(6) == state[...,None]).astype(float)
     else:
-        colors = start_coloring[state]
+        #colors = start_coloring[state]
         input = np.zeros((54,6),dtype=float)
-        input[np.arange(54,dtype=int),colors] = 1.0
+        input[np.arange(54,dtype=int),state] = 1.0
         return input.flatten()
 
 def reward_function(state):
@@ -226,5 +223,5 @@ def reward_function(state):
     else:
         return 0
 
-rubiks_task = task(54*6,18,task_action,check_win, reward_function, make_neural_input)
-rubiks_setup = setup(np.arange(54),18,task_action)
+rubiks_task = task(54,6,18,task_action,check_win, reward_function, make_neural_input)
+rubiks_setup = setup(start_coloring.copy(),18,task_action)

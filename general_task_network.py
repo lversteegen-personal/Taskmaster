@@ -11,6 +11,7 @@ from weighted_model import WeightedModel
 
 from task_tree import task_tree_node
 import small_rubiks as rubiks
+from task import task
 
 from utils import dotdict
 import pickle 
@@ -19,8 +20,14 @@ class student_network:
 
     def __init__(self, params):
 
-        self.state_size = params.state_size
-        self.action_codes = params.action_codes
+        task: "task" = params.task
+        self.state_shape = task.state_shape
+        self.one_hot_categories = task.one_hot_categories
+        self.state_size = np.prod(self.state_shape)*self.one_hot_categories
+        self.action_codes = task.n_actions
+        
+        self.params = params
+
         self.params = params
     
 
@@ -157,7 +164,7 @@ class student_network:
 
     def predict_state(self,  states, actions):
 
-        next_states = self.state_network.predict(x=[states,actions])
+        next_states = self.state_network(x=[states,actions])
         return next_states
 
     def fit_state(self, states, actions, next_states, epochs=1):

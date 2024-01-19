@@ -18,6 +18,8 @@ from weighted_model import WeightedModel
 from utils import dotdict, copy_network
 import pickle
 
+from task import task
+
 # tf.debugging.enable_check_numerics()
 
 
@@ -28,19 +30,26 @@ def reward_loss(y_true: tf.Tensor, y_pred: tf.Tensor):
     square = tf.square(y_pred-y_true)
     return tf.reduce_mean(square*(1+log), axis=-1)
 
+
 @tf.function
 def crossentropy_loss(y_true: tf.Tensor, y_pred: tf.Tensor):
 
-    return tf.reduce_mean(tf.square(tf.reduce_sum(y_true*tf.math.log(y_pred+1e-5),axis=-1)),axis=-1)
+    return -tf.reduce_mean(tf.reduce_sum(y_true*tf.math.log(y_pred+1e-5), axis=-1), axis=-1)
 
 
 class student_network:
 
     def __init__(self, params):
 
-        self.state_size = params.state_size
-        self.action_codes = params.action_codes
+        task: "task" = params.task
+        self.state_shape = task.state_shape
+        self.one_hot_categories = task.one_hot_categories
+        self.state_size = np.prod(self.state_shape)
+        self.action_codes = task.n_actions
+
         self.params = params
+
+        self.width = 32
 
     def create(params):
 
@@ -74,32 +83,48 @@ class student_network:
 
     def build_core(self, params):
 
-        self.state_input = kl.Input(shape=self.state_size, name="state_input")
+        self.state_input = kl.Input(
+            shape=self.state_shape+(self.one_hot_categories,), name="state_input")
 
-        self.core = self.state_input
+        x = kl.GaussianNoise(0.03)(self.state_input)
+
+        x = kl.Conv1D(filters=self.width*self.width, kernel_size=1, data_format="channels_first",
+                      kernel_regularizer=UnitRegularizer(0, 0.01))(x)
+        x = kl.LeakyReLU(0.05)(x)
+        x = kl.Reshape(target_shape=(self.width, self.width, self.one_hot_categories))(x)
+
+        for _ in range(params.residual_layers):
+            y = kl.Conv2D(filters=self.one_hot_categories, kernel_size=4, padding="same")(x)
+            y = kl.LeakyReLU(0.05)(y)
+            #y = kl.BatchNormalization()(y)
+            y = kl.Conv2D(filters=self.one_hot_categories, kernel_size=4, padding="same")(y)
+            y = kl.LeakyReLU(0.05)(y)
+            #y = kl.BatchNormalization()(y)
+            x = kl.Add()([x, y])
+
+        self.core = x
 
     def build_value_network(self, params):
 
         x = self.core
-        x = kl.GaussianNoise(0.03)(x)
 
-        x = kl.Dense(16*16*6,kernel_regularizer=UnitRegularizer(1e-3))(x)
+        x = kl.Conv2D(filters=params.residual_filters, kernel_size=4, padding="same")(x)
         x = kl.LeakyReLU(0.05)(x)
-        x = kl.Reshape(target_shape=(16, 16, 6))(x)
-        
-        x = kl.Conv2D(filters=64, kernel_size=2, padding="same")(x)
-        x = kl.LeakyReLU(0.05)(x)
-        x = kl.BatchNormalization()(x)
+
+        #x = kl.BatchNormalization()(x)
 
         y: tf.Tensor
 
-        for _ in range(8):
-            y = kl.Conv2D(filters=64,kernel_size=2,padding="same")(x)
+        for _ in range(params.residual_layers):
+            y = kl.Conv2D(filters=params.residual_filters, kernel_size=4, padding="same")(x)
             y = kl.LeakyReLU(0.05)(y)
-            y = kl.BatchNormalization()(y)
-            x = kl.Add()([x,y])
+            #y = kl.BatchNormalization()(y)
+            y = kl.Conv2D(filters=params.residual_filters, kernel_size=4, padding="same")(y)
+            y = kl.LeakyReLU(0.05)(y)
+            #y = kl.BatchNormalization()(y)
+            x = kl.Add()([x, y])
 
-        x = kl.Conv2D(filters=6,kernel_size=2,padding="same")(y)
+        x = kl.Conv2D(filters=6, kernel_size=2, padding="same")(y)
         x = kl.LeakyReLU(0.05)(x)
         x = kl.BatchNormalization()(x)
         x = kl.Flatten()(x)
@@ -107,16 +132,16 @@ class student_network:
         value = kl.Dense(1)(x)
         value = kl.Activation('softplus', name='value_output')(value)
 
-        reward = kl.Dense(self.action_codes)(x)
-        reward = kl.Activation('softplus', name='reward_output')(reward)
+        reward = kl.Dense(self.action_codes, name='reward_output')(x)
 
         reward_confidence = kl.Dense(self.action_codes)(x)
-        reward_confidence = kl.Activation('softplus', name='reward_confidence_output')(reward_confidence)
+        reward_confidence = kl.Activation(
+            'softplus', name='reward_confidence_output')(reward_confidence)
 
         model = WeightedModel(inputs=self.state_input, outputs=[
                               value, reward, reward_confidence])
 
-        opt = Adam(params.learning_rate, clipvalue=1)
+        opt = keras.optimizers.Adam(params.learning_rate, clipvalue=1)
 
         model.compile(optimizer=opt, run_eagerly=False)
 
@@ -124,72 +149,85 @@ class student_network:
 
     def build_state_network(self, params):
 
-        reg = params.residual_weights_reg
         core_input = self.core
-        action_input = kl.Input(self.action_codes, name="action_input")
-        x: tf.Tensor = kl.Concatenate()([core_input, action_input])
+        x: tf.Tensor = core_input
 
-        x = kl.Dense(16*16*7,kernel_regularizer=reg)(x)
+        action_input = kl.Input(self.action_codes, name="action_input")
+
+        y: tf.Tensor = kl.Dense(self.width*self.width*18,kernel_regularizer=UnitRegularizer(0,0.01))(action_input)
+        y = kl.LeakyReLU(0.05)(y)
+        y = kl.Reshape(target_shape=(self.width, self.width, 18))(y)
+
+        x = kl.Concatenate(axis=-1)([x, y])
+
+        x = kl.Conv2D(filters=16, kernel_size=4, padding="same")(x)
         x = kl.LeakyReLU(0.05)(x)
-        x = kl.Reshape(target_shape=(16, 16, 7))(x)
-        
-        x = kl.Conv2D(filters=32, kernel_size=2, padding="same")(x)
-        x = kl.LeakyReLU(0.05)(x)
-        x = kl.BatchNormalization()(x)
+
+        #x = kl.BatchNormalization()(x)
 
         y: tf.Tensor
 
-        for _ in range(3):
-            y = kl.Conv2D(filters=32,kernel_size=2,padding="same")(x)
+        for _ in range(params.residual_layers):
+            y = kl.Conv2D(filters=16, kernel_size=4, padding="same")(x)
             y = kl.LeakyReLU(0.05)(y)
-            y = kl.BatchNormalization()(y)
-            x = kl.Add()([x,y])
+            #y = kl.BatchNormalization()(y)
+            y = kl.Conv2D(filters=16, kernel_size=4, padding="same")(y)
+            y = kl.LeakyReLU(0.05)(y)
+            #y = kl.BatchNormalization()(y)
+            x = kl.Add()([x, y])
 
-        x = kl.Conv2D(filters=6,kernel_size=2,padding="same")(y)
+        x = kl.Conv2D(filters=self.one_hot_categories,
+                      kernel_size=1, padding="same")(x)
         x = kl.LeakyReLU(0.05)(x)
-        x = kl.BatchNormalization()(x)
-        x = kl.Flatten()(x)
+        #x = kl.BatchNormalization()(x)
+        x = kl.Reshape(target_shape=(self.width*self.width, self.one_hot_categories))(x)
+        next_state = kl.Conv1D(filters=self.state_size, kernel_size=1,
+                               data_format="channels_first", kernel_regularizer=UnitRegularizer(1e-3,1e-3))(x)
 
-        next_state = kl.Dense(self.state_size,kernel_regularizer=reg)(x)
-        next_state = kl.Reshape(target_shape=(54,6))(next_state)
-        next_state = kl.Softmax(name='state_output',axis=-1)(next_state)
-        #next_state = kl.Flatten()(next_state)
-        #next_state = kl.Activation('sigmoid',name='state_output')(next_state)
+        next_state = kl.Reshape(
+            target_shape=self.state_shape+(self.one_hot_categories,))(next_state)
+        next_state = kl.Softmax(name='state_output', axis=-1)(next_state)
 
-        model = Model(inputs=[self.state_input,action_input],outputs = next_state)
-        opt = Adam(learning_rate=params.learning_rate,clipvalue=1)
-        model.compile(optimizer=opt,loss=crossentropy_loss,metrics=["accuracy"])
+        model = Model(inputs=[self.state_input,
+                      action_input], outputs=next_state)
+        opt = Adam(learning_rate=params.learning_rate, clipvalue=1)
+        model.compile(optimizer=opt, loss=crossentropy_loss,
+                      metrics=["accuracy"])
 
         self.state_network = model
 
-    def make_residual_layer(self, x:tf.Tensor,params):
+    def make_residual_layer(self, x: tf.Tensor, params):
 
         y = kl.Dense(params.residual_units,
-            kernel_regularizer=params.residual_weights_reg,bias_regularizer=params.residual_bias_reg)(x)
+                     kernel_regularizer=params.residual_weights_reg, bias_regularizer=params.residual_bias_reg)(x)
         y = kl.ELU()(y)
         y = kl.BatchNormalization()(y)
-        y = kl.Dense(params.residual_units,kernel_regularizer=params.residual_weights_reg,bias_regularizer=params.residual_bias_reg)(y)
+        y = kl.Dense(params.residual_units, kernel_regularizer=params.residual_weights_reg,
+                     bias_regularizer=params.residual_bias_reg)(y)
         y = kl.ELU()(y)
         y = kl.BatchNormalization()(y)
-        z = kl.Concatenate()([x,y])
+        z = kl.Concatenate()([x, y])
         return z
 
     def predict_value(self, input_state):
 
         value, reward, reward_confidence = self.value_network(input_state)
-        value, reward, reward_confidence = (value.numpy(),reward.numpy(),reward_confidence.numpy())
+        value, reward, reward_confidence = (
+            value.numpy(), reward.numpy(), reward_confidence.numpy())
 
         return value, reward, reward_confidence
 
     def fit_value(self, input_state, value, reward, reward_confidence, reward_weights, epochs=1):
 
-        self.value_network.fit(x=input_state,y=[value, reward, reward_confidence], sample_weight=reward_weights,batch_size=64, epochs=epochs,shuffle =True)
+        self.value_network.fit(x=input_state, y=[value, reward, reward_confidence],
+                               sample_weight=reward_weights, batch_size=64, epochs=epochs, shuffle=True)
 
     def predict_state(self,  states, actions):
 
-        next_states = self.state_network.predict(x=[states,actions])
+        next_states = self.state_network.predict(x=[states, actions])
         return next_states
 
     def fit_state(self, states, actions, next_states, epochs=1):
 
-        self.state_network.fit(x=[states,actions],y=next_states,batch_size=64, epochs=epochs,shuffle =True,validation_split=1/16)
+        self.state_network.fit(x=[states, actions], y=next_states, batch_size=64,
+                               epochs=epochs, shuffle=True, validation_split=1/16)

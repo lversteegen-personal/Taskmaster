@@ -55,6 +55,7 @@ class WeightedModel(keras.Model):
     def metrics(self):
         return [self.loss_tracker, self.value_loss_tracker, self.reward_loss_tracker, self.confidence_loss_tracker]
 
+    #@tf.function
     def train_step(self: "WeightedModel", data):
 
         x, y_true, weights = data
